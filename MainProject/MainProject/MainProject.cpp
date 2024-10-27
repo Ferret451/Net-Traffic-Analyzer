@@ -1,7 +1,9 @@
 #include <iostream>
 #include <pcap.h>
 
-#include "Managers/DeviceManager/DeviceManager.h"
+#include "include/managers/DeviceManager.h"
+#include "include/ui/UIComboBox.h"
+#include "include/ui/UILabel.h"
 
 DeviceManager deviceManager;
 
@@ -50,37 +52,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
             hBrush = CreateSolidBrush(RGB(255, 255, 255));
 
-            hComboBox = CreateWindow(L"STATIC", L"Select device:",
+            UILabel lbDevices = UILabel(L"STATIC", L"Select device:",
                 WS_CHILD | WS_VISIBLE,
                 10, 30, 200, 20, hWnd, NULL, NULL, NULL);
-                
-            hComboBox = CreateWindow(L"COMBOBOX", NULL,
+
+            UIComboBox cbDevices = UIComboBox(L"COMBOBOX", NULL,
                 WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL,
                 10, 50, 200, 100, hWnd, NULL, NULL, NULL);
-
-            int i = 0;
-            pcap_if_t* device;
-            int maxWidth = 0; 
-            HDC hdc = GetDC(hComboBox); 
-            SIZE textSize;
-
-            while ((device = deviceManager.GetDevice(i++)) != NULL) {
-                wchar_t item[256];
-
-                MultiByteToWideChar(CP_ACP, 0, device->description, -1, item, 256);
+            cbDevices.FillWithDevices(deviceManager.GetDevicesArray());
+            cbDevices.SetBoxWidth(cbDevices.CalcMaxBoxWidth());
                 
-                SendMessage(hComboBox, CB_ADDSTRING, 0, (LPARAM)item);
-                
-                GetTextExtentPoint32(hdc, item, wcslen(item), &textSize);
-                if (textSize.cx > maxWidth) {
-                    maxWidth = textSize.cx;
-                }
-            }
-
-            ReleaseDC(hComboBox, hdc); 
-                
-            SendMessage(hComboBox, CB_SETDROPPEDWIDTH, (WPARAM)(maxWidth + 20), 0);
-
             break;
         }
                 

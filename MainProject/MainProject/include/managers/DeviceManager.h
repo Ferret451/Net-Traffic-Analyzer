@@ -1,6 +1,6 @@
 #pragma once
 #include <pcap/pcap.h>
-#include <../../MainProject/MainProject/Help/Consts.h>
+#include <../../MainProject/MainProject/help/Consts.h>
 
 class DeviceManager {
 private:
@@ -9,6 +9,7 @@ private:
 public:
     DeviceManager();
     
-    void SetAllDevices();
+    void FindAllDevices();
     pcap_if_t * GetDevice(int index);
+    pcap_if_t ** GetDevicesArray();
 };

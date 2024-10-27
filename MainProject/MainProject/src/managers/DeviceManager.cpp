@@ -1,12 +1,12 @@
-#include "DeviceManager.h"
+#include "../../include/managers/DeviceManager.h"
 
 #include <iostream>
 
 DeviceManager::DeviceManager() {
-    SetAllDevices();
+    FindAllDevices();
 }
 
-void DeviceManager::SetAllDevices() {
+void DeviceManager::FindAllDevices() {
     pcap_if_t *allDevs;
     char errBuf[PCAP_ERRBUF_SIZE];
     
@@ -41,4 +41,8 @@ pcap_if_t* DeviceManager::GetDevice(int index) {
     }
     
     return devicesArray[index];
+}
+
+pcap_if_t** DeviceManager::GetDevicesArray() {
+    return devicesArray;
 }
