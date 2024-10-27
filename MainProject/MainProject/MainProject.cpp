@@ -1,6 +1,10 @@
 #include <iostream>
 #include <pcap.h>
 
+#include "Managers/DeviceManager/DeviceManager.h"
+
+DeviceManager deviceManager;
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow) {
@@ -24,7 +28,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nC
     hWnd = CreateWindow(L"NetTrafficAnalyzer", L"Net Traffic Analyzer",
         WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, 0,
         CW_USEDEFAULT, 0, NULL, NULL, hInst, NULL);
-
+    
     ShowWindow(hWnd, nCmdShow);
     UpdateWindow(hWnd);
 
@@ -33,74 +37,86 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nC
         DispatchMessage(&msg);
     }
 
-    return (int)msg.wParam;
-}
-
-void NPCAPTEST() {
-    pcap_if_t *alldevs;
-    pcap_if_t *device;
-    pcap_t *handle;
-    char errbuf[PCAP_ERRBUF_SIZE];
-    
-    // Получение списка всех устройств
-    if (pcap_findalldevs(&alldevs, errbuf) == -1) {
-        std::cerr << "Ошибка при получении списка устройств: " << errbuf << '\n';
-    }
-    
-    // Используем первое устройство (можно выбрать вручную)
-    device = alldevs->next->next->next;
-    
-    // Открываем устройство для захвата трафика
-    handle = pcap_open_live(device->name, BUFSIZ, 1, 1000, errbuf);
-    if (handle == nullptr) {
-        std::cerr << "Ошибка при открытии устройства: " << errbuf << '\n';
-    }
-    
-    std::cout << "Захват трафика с устройства: " << device->name << '\n';
-    
-    // Захват одного пакета
-    pcap_pkthdr *header;
-    const u_char *packet;
-    
-    int res = pcap_next_ex(handle, &header, &packet);
-    if (res == 1) {
-        std::cout << "Пакет длиной: " << header->len << " байт" << '\n';
-    } else if (res == -1) {
-        std::cerr << "Ошибка при захвате пакета: " << pcap_geterr(handle) << '\n';
-    }
-    
-    // Освобождаем ресурсы
-    pcap_close(handle);
-    pcap_freealldevs(alldevs);
+    return msg.wParam;
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+    static HBRUSH hBrush = NULL;
+    static HWND hComboBox;
+    
     switch (message) {
+        case WM_CREATE: {
+            deviceManager = DeviceManager();
+
+            hBrush = CreateSolidBrush(RGB(255, 255, 255));
+
+            hComboBox = CreateWindow(L"STATIC", L"Select device:",
+                WS_CHILD | WS_VISIBLE,
+                10, 30, 200, 20, hWnd, NULL, NULL, NULL);
+                
+            hComboBox = CreateWindow(L"COMBOBOX", NULL,
+                WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL,
+                10, 50, 200, 100, hWnd, NULL, NULL, NULL);
+
+            int i = 0;
+            pcap_if_t* device;
+            int maxWidth = 0; 
+            HDC hdc = GetDC(hComboBox); 
+            SIZE textSize;
+
+            while ((device = deviceManager.GetDevice(i++)) != NULL) {
+                wchar_t item[256];
+
+                MultiByteToWideChar(CP_ACP, 0, device->description, -1, item, 256);
+                
+                SendMessage(hComboBox, CB_ADDSTRING, 0, (LPARAM)item);
+                
+                GetTextExtentPoint32(hdc, item, wcslen(item), &textSize);
+                if (textSize.cx > maxWidth) {
+                    maxWidth = textSize.cx;
+                }
+            }
+
+            ReleaseDC(hComboBox, hdc); 
+                
+            SendMessage(hComboBox, CB_SETDROPPEDWIDTH, (WPARAM)(maxWidth + 20), 0);
+
+            break;
+        }
+                
         case WM_PAINT: {
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
-
-            POINT ltPoint = {50, 50};
-            POINT rtPoint = {100, 50};
-            POINT rbPoint = {100, 100};
-            POINT lbPoint = {50, 100};
-            
-            POINT points[4] = {
-                ltPoint,
-                rtPoint,
-                rbPoint,
-                lbPoint
-            };
-
-            Polygon(hdc, points, 4);
                 
             RECT rect;
             GetClientRect(hWnd, &rect);
 
-            NPCAPTEST();
-
             EndPaint(hWnd, &ps);
             break;
+        }
+
+         // case WM_COMMAND: {
+         //    if (HIWORD(wParam) == CBN_SELCHANGE && LOWORD(wParam) == IDC_COMBOBOX) {
+         //        // Получаем индекс выбранного элемента
+         //        int selectedIndex = SendMessage(hComboBox, CB_GETCURSEL, 0, 0);
+         //
+         //        if (selectedIndex != CB_ERR) {
+         //            wchar_t selectedItem[256];
+         //            // Получаем текст выбранного элемента
+         //            SendMessage(hComboBox, CB_GETLBTEXT, selectedIndex, (LPARAM)selectedItem);
+         //            // Вывести выбранный элемент
+         //            MessageBox(hWnd, selectedItem, L"Выбранный элемент", MB_OK);
+         //
+         //            
+         //        }
+         //    }
+         //    break;
+         // }
+
+        case WM_CTLCOLORSTATIC: {
+            HDC hdcStatic = (HDC)wParam;
+            SetBkMode(hdcStatic, TRANSPARENT);
+            return (LRESULT)hBrush;
         }
         
         case WM_DESTROY:
