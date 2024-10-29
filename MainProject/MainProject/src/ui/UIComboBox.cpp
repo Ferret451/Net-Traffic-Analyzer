@@ -7,15 +7,14 @@ UIComboBox::UIComboBox(LPCWSTR lpClassName, LPCWSTR lpWindowName, DWORD dwStyle,
     
 }
 
-void UIComboBox::FillWithDevices(pcap_if_t **devicesArray) {
-    int i = 0;
-    pcap_if_t* device;
+void UIComboBox::FillWithDevices(char **devices, int devicesCount) {
     HDC hdc = GetDC(GetHWindow()); 
 
-    while ((device = devicesArray[i++]) != NULL) {
+    for (int i = 0; i < devicesCount; i++) {
         wchar_t item[256];
+        char* device = devices[i];
 
-        MultiByteToWideChar(CP_ACP, 0, device->description, -1, item, 256);
+        MultiByteToWideChar(CP_ACP, 0, device, -1, item, 256);
                 
         SendMessage(GetHWindow(), CB_ADDSTRING, 0, (LPARAM)item);
     }

@@ -59,7 +59,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             UIComboBox cbDevices = UIComboBox(L"COMBOBOX", NULL,
                 WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL,
                 10, 50, 200, 100, hWnd, NULL, NULL, NULL);
-            cbDevices.FillWithDevices(deviceManager.GetDevicesArray());
+            cbDevices.FillWithDevices(deviceManager.GetDevicesDescriptions(), deviceManager.GetDevicesCount());
             cbDevices.SetBoxWidth(cbDevices.CalcMaxBoxWidth());
                 
             break;

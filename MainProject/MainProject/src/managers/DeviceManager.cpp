@@ -35,6 +35,10 @@ void DeviceManager::FindAllDevices() {
     pcap_freealldevs(allDevs);
 }
 
+int DeviceManager::GetDevicesCount() {
+    return devicesCount;
+}
+
 pcap_if_t* DeviceManager::GetDevice(int index) {
     if (index >= devicesCount || index < 0) {
         return nullptr;
@@ -43,6 +47,12 @@ pcap_if_t* DeviceManager::GetDevice(int index) {
     return devicesArray[index];
 }
 
-pcap_if_t** DeviceManager::GetDevicesArray() {
-    return devicesArray;
+char** DeviceManager::GetDevicesDescriptions() {
+    char **devicesDescriptions = new char*[MAX_DEVICES];
+
+    for (int i = 0; i < devicesCount; i++) {
+        devicesDescriptions[i] = devicesArray[i]->description;
+    }
+    
+    return devicesDescriptions;
 }

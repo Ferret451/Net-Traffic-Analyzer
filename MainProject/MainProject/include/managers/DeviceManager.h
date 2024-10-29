@@ -10,6 +10,8 @@ public:
     DeviceManager();
     
     void FindAllDevices();
+
+    int GetDevicesCount();
     pcap_if_t * GetDevice(int index);
-    pcap_if_t ** GetDevicesArray();
+    char ** GetDevicesDescriptions();
 };

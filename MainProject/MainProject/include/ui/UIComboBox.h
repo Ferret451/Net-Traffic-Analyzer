@@ -8,7 +8,7 @@ public:
         int x, int y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu,
         HINSTANCE hInstance, LPVOID lpParam);
 
-    void FillWithDevices(pcap_if_t **devicesArray);
+    void FillWithDevices(char **devices, int devicesCount);
 
     int CalcMaxBoxWidth();
     void SetBoxWidth(int width);
