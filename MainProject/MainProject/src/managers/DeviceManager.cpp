@@ -56,3 +56,9 @@ char** DeviceManager::GetDevicesDescriptions() {
     
     return devicesDescriptions;
 }
+
+DeviceManager::~DeviceManager() {
+    pcap_freealldevs(devicesArray[0]);
+
+    delete [] devicesArray; 
+}

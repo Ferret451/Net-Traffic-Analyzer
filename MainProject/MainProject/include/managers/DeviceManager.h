@@ -14,4 +14,6 @@ public:
     int GetDevicesCount();
     pcap_if_t * GetDevice(int index);
     char ** GetDevicesDescriptions();
+
+    ~DeviceManager();
 };

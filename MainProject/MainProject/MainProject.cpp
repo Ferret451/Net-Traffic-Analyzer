@@ -44,7 +44,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nC
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
     static HBRUSH hBrush = NULL;
-    static HWND hComboBox;
+    static HWND hComboBox = NULL;
     
     switch (message) {
         case WM_CREATE: {
@@ -59,8 +59,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             UIComboBox cbDevices = UIComboBox(L"COMBOBOX", NULL,
                 WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL,
                 10, 50, 200, 100, hWnd, NULL, NULL, NULL);
-            cbDevices.FillWithDevices(deviceManager.GetDevicesDescriptions(), deviceManager.GetDevicesCount());
+
+            char **devices = deviceManager.GetDevicesDescriptions();
+            int devicesCount = deviceManager.GetDevicesCount();
+            cbDevices.FillWithDevices(devices, devicesCount);
             cbDevices.SetBoxWidth(cbDevices.CalcMaxBoxWidth());
+            delete [] devices;
                 
             break;
         }
