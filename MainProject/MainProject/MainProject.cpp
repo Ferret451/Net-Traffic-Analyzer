@@ -1,11 +1,11 @@
 #include <iostream>
 #include <pcap.h>
 
+#include "include/managers/CaptureManager.h"
 #include "include/managers/DeviceManager.h"
+#include "include/ui/UIButton.h"
 #include "include/ui/UIComboBox.h"
 #include "include/ui/UILabel.h"
-
-DeviceManager deviceManager;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
@@ -44,60 +44,91 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nC
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
     static HBRUSH hBrush = NULL;
-    static HWND hComboBox = NULL;
+    static HWND hComboBoxDevices = NULL;
+    static HWND hLabelDevices = NULL;
+    static HWND hButtonStart = NULL;
+    static HWND hButtonStop = NULL;
+    static HWND hButtonPause = NULL;
+    
+    static DeviceManager deviceManager;
+    static CaptureManager captureManager;
+    static PacketManager packetManager;
     
     switch (message) {
         case WM_CREATE: {
-            deviceManager = DeviceManager();
-
+            // Declaring graphic resources
             hBrush = CreateSolidBrush(RGB(255, 255, 255));
 
-            UILabel lbDevices = UILabel(L"STATIC", L"Select device:",
+            // Devices label
+            UILabel lbDevices = UILabel(L"STATIC", L"Select Device^",
                 WS_CHILD | WS_VISIBLE,
-                10, 30, 200, 20, hWnd, NULL, NULL, NULL);
+                10, 30, 200, 20, hWnd, (HMENU) id_lb_devices, NULL, NULL);
+            hLabelDevices = lbDevices.GetHWindow();
 
+            // Devices combobox
             UIComboBox cbDevices = UIComboBox(L"COMBOBOX", NULL,
                 WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL,
-                10, 50, 200, 100, hWnd, NULL, NULL, NULL);
+                10, 50, 200, 100, hWnd, (HMENU) id_cb_devices, NULL, NULL);
+            hComboBoxDevices = cbDevices.GetHWindow();
 
             char **devices = deviceManager.GetDevicesDescriptions();
             int devicesCount = deviceManager.GetDevicesCount();
             cbDevices.FillWithDevices(devices, devicesCount);
-            cbDevices.SetBoxWidth(cbDevices.CalcMaxBoxWidth());
+
+            int scrollbarWidth = GetSystemMetrics(SM_CXVSCROLL);    
+            cbDevices.SetBoxWidth(cbDevices.CalcMaxTextWidth() + 1.5 * scrollbarWidth);
+
             delete [] devices;
+
+            // Start button
+            UIButton btnStart = UIButton(L"BUTTON", L"Pl",
+                WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                250, 30, 30, 30, hWnd, (HMENU) id_btn_start, NULL, NULL);
+
+            // Stop button
+            UIButton btnStop = UIButton(L"BUTTON", L"St", 
+                WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                295, 30, 30, 30, hWnd, (HMENU) id_btn_stop, NULL, NULL);
+
+            // Pause button
+            UIButton btnPause = UIButton(L"BUTTON", L"Pa", 
+                WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                340, 30, 30, 30, hWnd, (HMENU) id_btn_pause, NULL, NULL);
                 
             break;
         }
-                
-        case WM_PAINT: {
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hWnd, &ps);
-                
-            RECT rect;
-            GetClientRect(hWnd, &rect);
 
-            EndPaint(hWnd, &ps);
+        case WM_COMMAND: {
+            if (HIWORD(wParam) == CBN_SELCHANGE) {
+                if (LOWORD(wParam) == id_cb_devices) {
+                    int i = 0;
+                    int selectedIndex = SendMessage(hComboBoxDevices, CB_GETCURSEL, 0, 0);
+         
+                    if (selectedIndex != CB_ERR) {
+                        wchar_t selectedItemWChar[256];
+                        char *selectedItemChar = nullptr;
+                    
+                        SendMessage(hComboBoxDevices, CB_GETLBTEXT, selectedIndex, (LPARAM)selectedItemWChar);
+                        WideCharToMultiByte(CP_ACP, 0, selectedItemWChar, -1,
+                            selectedItemChar, 256, NULL, NULL);
+
+                        PacketsCapturer* packetsCapturer;
+                        if ((packetsCapturer = captureManager.GetCapturer(selectedItemChar)) == nullptr) {
+                            packetsCapturer = new PacketsCapturer(selectedItemChar, &packetManager, hWnd);
+                            captureManager.AddCapturer(packetsCapturer);
+                        }
+
+                        //packetsCapturer->StartCapturing(); 
+                    
+                        MessageBox(hWnd, selectedItemWChar, L"Picked Element", MB_OK);
+         
+                        delete [] selectedItemChar;
+                    }
+                }
+            }
             break;
         }
-
-         // case WM_COMMAND: {
-         //    if (HIWORD(wParam) == CBN_SELCHANGE && LOWORD(wParam) == IDC_COMBOBOX) {
-         //        // Получаем индекс выбранного элемента
-         //        int selectedIndex = SendMessage(hComboBox, CB_GETCURSEL, 0, 0);
-         //
-         //        if (selectedIndex != CB_ERR) {
-         //            wchar_t selectedItem[256];
-         //            // Получаем текст выбранного элемента
-         //            SendMessage(hComboBox, CB_GETLBTEXT, selectedIndex, (LPARAM)selectedItem);
-         //            // Вывести выбранный элемент
-         //            MessageBox(hWnd, selectedItem, L"Выбранный элемент", MB_OK);
-         //
-         //            
-         //        }
-         //    }
-         //    break;
-         // }
-
+        
         case WM_CTLCOLORSTATIC: {
             HDC hdcStatic = (HDC)wParam;
             SetBkMode(hdcStatic, TRANSPARENT);

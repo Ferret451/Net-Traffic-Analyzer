@@ -1,5 +1,5 @@
 #pragma once
-#include <pcap/pcap.h>
+#include <pcap.h>
 #include <../../MainProject/MainProject/help/Consts.h>
 
 class DeviceManager {
@@ -14,6 +14,4 @@ public:
     int GetDevicesCount();
     pcap_if_t * GetDevice(int index);
     char ** GetDevicesDescriptions();
-
-    ~DeviceManager();
 };

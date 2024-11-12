@@ -1,12 +1,5 @@
 #include "../../include/ui/UIComboBox.h"
 
-UIComboBox::UIComboBox(LPCWSTR lpClassName, LPCWSTR lpWindowName, DWORD dwStyle,
-    int x, int y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu,
-    HINSTANCE hInstance, LPVOID lpParam) :
-        UIElement(lpClassName, lpWindowName, dwStyle, x, y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam) {
-    
-}
-
 void UIComboBox::FillWithDevices(char **devices, int devicesCount) {
     HDC hdc = GetDC(GetHWindow()); 
 
@@ -22,8 +15,8 @@ void UIComboBox::FillWithDevices(char **devices, int devicesCount) {
     ReleaseDC(GetHWindow(), hdc); 
 }
 
-int UIComboBox::CalcMaxBoxWidth() {
-    int maxWidth = 0;
+int UIComboBox::CalcMaxTextWidth() {
+    int maxTextWidth = 0;
     HDC hdc = GetDC(GetHWindow());
     SIZE textSize;
     wchar_t item[256];
@@ -31,13 +24,13 @@ int UIComboBox::CalcMaxBoxWidth() {
     for (int i = 0; i < SendMessage(GetHWindow(), CB_GETCOUNT, 0, 0); i++) {
         SendMessage(GetHWindow(), CB_GETLBTEXT, i, (LPARAM)item);
         GetTextExtentPoint32(hdc, item, wcslen(item), &textSize);
-        if (textSize.cx > maxWidth) {
-            maxWidth = textSize.cx;
+        if (textSize.cx > maxTextWidth) {
+            maxTextWidth = textSize.cx;
         }
     }
-
+    
     ReleaseDC(GetHWindow(), hdc);
-    return maxWidth;
+    return maxTextWidth;
 }
 
 void UIComboBox::SetBoxWidth(int width) {
