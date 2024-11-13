@@ -85,17 +85,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             delete [] devices;
 
             // Start button
-            UIButton btnStart = UIButton(L"BUTTON", L"Pl",
+            UIButton btnStart = UIButton(L"BUTTON", L">",
                 WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
                 250, 30, 30, 30, hWnd, (HMENU) id_btn_start, NULL, NULL);
 
             // Stop button
-            UIButton btnStop = UIButton(L"BUTTON", L"St", 
+            UIButton btnStop = UIButton(L"BUTTON", L">||", 
                 WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
                 295, 30, 30, 30, hWnd, (HMENU) id_btn_stop, NULL, NULL);
 
             // Pause button
-            UIButton btnPause = UIButton(L"BUTTON", L"Pa", 
+            UIButton btnPause = UIButton(L"BUTTON", L"0", 
                 WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
                 340, 30, 30, 30, hWnd, (HMENU) id_btn_pause, NULL, NULL);
 
@@ -104,11 +104,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
                 WS_CHILD | WS_VISIBLE | LVS_REPORT,
                 250, 80, 750, 300, hWnd, (HMENU) id_lv_packets, NULL, NULL);
                 
-                const wchar_t* columnsHeaders[] = { L"Time", L"Source", L"Destination", L"Protocol", L"Length" };
-                lvPackets.AddColumns(columnsHeaders, 5);
+            const wchar_t* columnsHeaders[] = { L"No.", L"Time", L"Source", L"Destination", L"Protocol", L"Length" };
+            lvPackets.AddColumns(columnsHeaders, 6);
 
-                const wchar_t* columnsValues[] = { L"10:00:00", L"Me", L"You", L"IPV4", L"451" };
-                lvPackets.AddRow(columnsValues);
+            const wchar_t* columnsValues[] = { L"1", L"10:00:00", L"Me", L"You", L"IPV4", L"451", L"Hello" };
+            lvPackets.AddRow(columnsValues);
                 
             break;
         }
@@ -121,7 +121,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
          
                     if (selectedIndex != CB_ERR) {
                         wchar_t selectedItemWChar[256];
-                        char *selectedItemChar = nullptr;
+                        char selectedItemChar[256];
                     
                         SendMessage(hComboBoxDevices, CB_GETLBTEXT, selectedIndex, (LPARAM)selectedItemWChar);
                         WideCharToMultiByte(CP_ACP, 0, selectedItemWChar, -1,
@@ -136,8 +136,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
                         //packetsCapturer->StartCapturing(); 
                     
                         MessageBox(hWnd, selectedItemWChar, L"Picked Element", MB_OK);
-         
-                        delete [] selectedItemChar;
                     }
                 }
             }
