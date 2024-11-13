@@ -1,11 +1,13 @@
 #include <iostream>
 #include <pcap.h>
+#include <commctrl.h>
 
 #include "include/managers/CaptureManager.h"
 #include "include/managers/DeviceManager.h"
 #include "include/ui/UIButton.h"
 #include "include/ui/UIComboBox.h"
 #include "include/ui/UILabel.h"
+#include "include/ui/UIListView.h"
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
@@ -34,6 +36,8 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nC
     ShowWindow(hWnd, nCmdShow);
     UpdateWindow(hWnd);
 
+    InitCommonControls();
+    
     while (GetMessage(&msg, NULL, 0, 0)) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
@@ -94,6 +98,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             UIButton btnPause = UIButton(L"BUTTON", L"Pa", 
                 WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
                 340, 30, 30, 30, hWnd, (HMENU) id_btn_pause, NULL, NULL);
+
+            // Packets listview
+            UIListView lvPackets = UIListView(WC_LISTVIEW, NULL,
+                WS_CHILD | WS_VISIBLE | LVS_REPORT,
+                250, 80, 750, 300, hWnd, (HMENU) id_lv_packets, NULL, NULL);
+                
+                const wchar_t* columnsHeaders[] = { L"Time", L"Source", L"Destination", L"Protocol", L"Length" };
+                lvPackets.AddColumns(columnsHeaders, 5);
+
+                const wchar_t* columnsValues[] = { L"10:00:00", L"Me", L"You", L"IPV4", L"451" };
+                lvPackets.AddRow(columnsValues);
                 
             break;
         }

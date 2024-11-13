@@ -115,7 +115,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>D:\Unik\СП\Kursach\Net-Traffic-Analyzer\npcap-sdk-1.13\Lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Packet.lib;wpcap.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Packet.lib;wpcap.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -156,7 +156,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>D:\Unik\СП\Kursach\Net-Traffic-Analyzer\npcap-sdk-1.13\Lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Packet.lib;wpcap.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Packet.lib;wpcap.lib;comctl32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -746,6 +746,7 @@
       <AdditionalIncludeDirectories>D:\Unik\СП\Kursach\Net-Traffic-Analyzer\npcap-sdk-1.13\Include;</AdditionalIncludeDirectories>
       <LinkCompiled>true</LinkCompiled>
     </ClCompile>
+    <ClCompile Include="src\ui\UIListView.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="help\Consts.h" />
@@ -758,11 +759,7 @@
     <ClInclude Include="include\ui\UIComboBox.h" />
     <ClInclude Include="include\ui\UIElement.h" />
     <ClInclude Include="include\ui\UILabel.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="res\icon-pause.png" />
-    <Content Include="res\icon-play.png" />
-    <Content Include="res\icon-stop.png" />
+    <ClInclude Include="include\ui\UIListView.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
