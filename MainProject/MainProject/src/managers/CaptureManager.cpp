@@ -25,6 +25,10 @@ PacketsCapturer *CaptureManager::GetCurrentCapturer() {
     return currentCapturer;
 }
 
+void CaptureManager::SetCurrentCapturer(PacketsCapturer *capturer) {
+    currentCapturer = capturer;
+}
+
 CaptureManager::~CaptureManager() {
     for (int i = 0; i < capturersCount; i++) {
         delete packetsCapturer[i];

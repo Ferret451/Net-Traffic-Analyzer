@@ -9,6 +9,7 @@ public:
     void AddCapturer(PacketsCapturer *capturer);
     PacketsCapturer *GetCapturer(int index);
     PacketsCapturer *GetCapturer(const char* name); 
-    PacketsCapturer *GetCurrentCapturer(); 
+    PacketsCapturer *GetCurrentCapturer();
+    void SetCurrentCapturer(PacketsCapturer *capturer);
     ~CaptureManager();
 };

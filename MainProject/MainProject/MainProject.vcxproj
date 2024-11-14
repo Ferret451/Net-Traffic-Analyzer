@@ -750,6 +750,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="help\Consts.h" />
+    <ClInclude Include="help\PacketListInfo.h" />
     <ClInclude Include="include\managers\CaptureManager.h" />
     <ClInclude Include="include\managers\DeviceManager.h" />
     <ClInclude Include="include\managers\PacketManager.h" />

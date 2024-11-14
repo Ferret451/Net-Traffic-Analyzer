@@ -12,6 +12,8 @@ public:
     void FindAllDevices();
 
     int GetDevicesCount();
-    pcap_if_t * GetDevice(int index);
+    pcap_if_t *GetDevice(int index);
+    pcap_if_t *GetDeviceByName(char *name);
+    pcap_if_t *GetDeviceByDescription(char *name);
     char ** GetDevicesDescriptions();
 };

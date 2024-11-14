@@ -47,6 +47,26 @@ pcap_if_t* DeviceManager::GetDevice(int index) {
     return devicesArray[index];
 }
 
+pcap_if_t* DeviceManager::GetDeviceByName(char* name) {
+    for (int i = 0; i < devicesCount; i++) {
+        if (strcmp(devicesArray[i]->name, name) == 0) {
+            return devicesArray[i];
+        }
+    }
+    
+    return nullptr;
+}
+
+pcap_if_t* DeviceManager::GetDeviceByDescription(char* description) {
+    for (int i = 0; i < devicesCount; i++) {
+        if (strcmp(devicesArray[i]->description, description) == 0) {
+            return devicesArray[i];
+        }
+    }
+    
+    return nullptr;
+}
+
 char** DeviceManager::GetDevicesDescriptions() {
     char **devicesDescriptions = new char*[MAX_DEVICES];
 

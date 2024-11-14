@@ -3,10 +3,20 @@
 
 class Packet {
     pcap_pkthdr header;
-    const u_char *pkt_data;
+    const u_char *pktData;
+    int linkType;
     
-    char timeString[16];
+    wchar_t timeString[16];
+    unsigned int length;
 public:
-    Packet(pcap_pkthdr *header, const u_char *pkt_data);
+    Packet(pcap_pkthdr *header, const u_char *pktData, pcap_t *adHandle);
+
+    pcap_pkthdr GetHeader();
+    const u_char *GetData();
+    int GetLinkType();
+
+    wchar_t *GetTimeString();
+    int GetLength();
+    
     ~Packet();
 };

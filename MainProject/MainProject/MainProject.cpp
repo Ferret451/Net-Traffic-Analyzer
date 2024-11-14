@@ -1,6 +1,8 @@
 #include <iostream>
 #include <pcap.h>
 #include <commctrl.h>
+#include <string>
+#include <cstdint>
 
 #include "include/managers/CaptureManager.h"
 #include "include/managers/DeviceManager.h"
@@ -46,17 +48,54 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nC
     return msg.wParam;
 }
 
+// Combining two bytes into unsigned short
+unsigned short combineTwoBytes(unsigned short high, unsigned short low) {
+    return (u_short)(high << 8 | low);
+}
+
+// Getting the length of the Wi-Fi header, because it can be 24 or 30 bytes
+int getWifiHeaderLength(const u_char* pkt_data) {
+    const wifi_header* wh = reinterpret_cast<const wifi_header*>(pkt_data);
+
+    uint16_t frame_control = wh->frame_control; 
+    uint8_t high_byte = frame_control >> 8 & 0xFF; 
+    uint8_t low_byte = frame_control & 0xFF; 
+    uint16_t combined = combineTwoBytes(high_byte, low_byte);
+    
+    int type = (combined & 0x0C) >> 2;
+    if (type == 2) { 
+        bool hasAddr4 = combined & 0x03;
+        return hasAddr4 ? 30 : 24;
+    }
+    
+    return 24;
+}
+
+// Thread function for capturing packets
+DWORD WINAPI CaptureThreadFunction(LPVOID lpParam) {
+    CaptureManager* captureManager = static_cast<CaptureManager*>(lpParam);
+
+    if (captureManager) {
+        captureManager->GetCurrentCapturer()->StartCapturing();
+    }
+
+    return 0;
+}
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
     static HBRUSH hBrush = NULL;
+    
     static HWND hComboBoxDevices = NULL;
     static HWND hLabelDevices = NULL;
     static HWND hButtonStart = NULL;
     static HWND hButtonStop = NULL;
-    static HWND hButtonPause = NULL;
+    static HWND hListViewPackets = NULL;
     
     static DeviceManager deviceManager;
     static CaptureManager captureManager;
     static PacketManager packetManager;
+
+    static HANDLE hCaptureThread = NULL;
     
     switch (message) {
         case WM_CREATE: {
@@ -64,7 +103,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             hBrush = CreateSolidBrush(RGB(255, 255, 255));
 
             // Devices label
-            UILabel lbDevices = UILabel(L"STATIC", L"Select Device^",
+            UILabel lbDevices = UILabel(L"STATIC", L"Select Device:",
                 WS_CHILD | WS_VISIBLE,
                 10, 30, 200, 20, hWnd, (HMENU) id_lb_devices, NULL, NULL);
             hLabelDevices = lbDevices.GetHWindow();
@@ -88,27 +127,24 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             UIButton btnStart = UIButton(L"BUTTON", L">",
                 WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
                 250, 30, 30, 30, hWnd, (HMENU) id_btn_start, NULL, NULL);
+            hButtonStart = btnStart.GetHWindow();
+            EnableWindow(hButtonStart, FALSE);
 
             // Stop button
-            UIButton btnStop = UIButton(L"BUTTON", L">||", 
+            UIButton btnStop = UIButton(L"BUTTON", L"0", 
                 WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
                 295, 30, 30, 30, hWnd, (HMENU) id_btn_stop, NULL, NULL);
-
-            // Pause button
-            UIButton btnPause = UIButton(L"BUTTON", L"0", 
-                WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                340, 30, 30, 30, hWnd, (HMENU) id_btn_pause, NULL, NULL);
+            hButtonStop = btnStop.GetHWindow();
+            EnableWindow(hButtonStop, FALSE);
 
             // Packets listview
             UIListView lvPackets = UIListView(WC_LISTVIEW, NULL,
                 WS_CHILD | WS_VISIBLE | LVS_REPORT,
-                250, 80, 750, 300, hWnd, (HMENU) id_lv_packets, NULL, NULL);
+                250, 80, 750, 370, hWnd, (HMENU) id_lv_packets, NULL, NULL);
+            hListViewPackets = lvPackets.GetHWindow();
                 
             const wchar_t* columnsHeaders[] = { L"No.", L"Time", L"Source", L"Destination", L"Protocol", L"Length" };
             lvPackets.AddColumns(columnsHeaders, 6);
-
-            const wchar_t* columnsValues[] = { L"1", L"10:00:00", L"Me", L"You", L"IPV4", L"451", L"Hello" };
-            lvPackets.AddRow(columnsValues);
                 
             break;
         }
@@ -129,17 +165,178 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
                         PacketsCapturer* packetsCapturer;
                         if ((packetsCapturer = captureManager.GetCapturer(selectedItemChar)) == nullptr) {
-                            packetsCapturer = new PacketsCapturer(selectedItemChar, &packetManager, hWnd);
+                            pcap_if_t *device = deviceManager.GetDeviceByDescription(selectedItemChar);
+                            packetsCapturer = new PacketsCapturer(device->name, &packetManager, hWnd);
                             captureManager.AddCapturer(packetsCapturer);
+                            captureManager.SetCurrentCapturer(packetsCapturer);
                         }
-
-                        //packetsCapturer->StartCapturing(); 
                     
-                        MessageBox(hWnd, selectedItemWChar, L"Picked Element", MB_OK);
+                        EnableWindow(hButtonStart, TRUE);
                     }
                 }
             }
+                
+            switch (LOWORD(wParam)) {
+                case id_btn_start:
+                    if (SendMessage(hComboBoxDevices, CB_GETCURSEL, 0, 0) == -1)
+                        //TODO: add printing error
+
+                        break;
+                    
+                    packetManager.ClearPackets();
+                    ListView_DeleteAllItems(hListViewPackets);
+                
+                    hCaptureThread = CreateThread(
+                        NULL,                   
+                        0,                      
+                        CaptureThreadFunction,  
+                        &captureManager,
+                        0,                      
+                        NULL                    
+                    );
+
+                    EnableWindow(hButtonStart, FALSE);
+                    EnableWindow(hButtonStop, TRUE);
+                    EnableWindow(hComboBoxDevices, FALSE);
+                    break;
+                case id_btn_stop:
+                    captureManager.GetCurrentCapturer()->StopCapturing();
+
+                    if (hCaptureThread) {
+                        CloseHandle(hCaptureThread); 
+                    }
+                
+                    EnableWindow(hButtonStart, TRUE);
+                    EnableWindow(hButtonStop, FALSE);
+                    EnableWindow(hComboBoxDevices, TRUE);
+                    break;
+                default:
+                    break;
+            }
+                
             break;
+        }
+
+        case WM_ADD_LISTVIEW_ITEM: {
+            int receivedCount = packetManager.GetPacketsCount();
+            int displayedCount = ListView_GetItemCount(hListViewPackets);
+                
+            for (int i = displayedCount; i < receivedCount; i++) {
+                Packet *packet = packetManager.GetPacket(i);
+                const u_char *data = packet->GetData();
+                const wchar_t* columnsValues[6];
+                
+                std::wstring packetIndex = std::to_wstring(i);
+                std::wstring timeString = packet->GetTimeString();
+
+                columnsValues[0] = packetIndex.c_str();
+                columnsValues[1] = timeString.c_str();
+                
+                int link_type = packet->GetLinkType();
+                const u_char* ip_data = nullptr;
+                u_short eth_type = 0;
+                
+                if (link_type == DLT_EN10MB) {  // Ethernet
+                    eth_type = combineTwoBytes(data[12], data[13]);
+                    ip_data = data + 14;
+                    // // IPv4
+                    // if (eth_type == 0x0800) { 
+                    //     ip_data = data + 14;
+                    // }
+                    // // IPv6
+                    // else if (eth_type == 0x86DD) { 
+                    //     ip_data = data + 14; 
+                    // }
+                }
+                else if (link_type == DLT_IEEE802_11) { // WI-FI
+                    int wifi_header_len = getWifiHeaderLength(data); 
+                    eth_type = combineTwoBytes(data[wifi_header_len], data[wifi_header_len + 1]);
+                }
+
+                std::wstring srcIpStr, destIpStr, protoStr, lengthStr;
+                if (eth_type == 0x0800) {  // IPv4
+                    ipv4_header* ih = (ipv4_header*)ip_data;
+
+                    srcIpStr = std::to_wstring(ih->saddr.byte1) + L"." +
+                               std::to_wstring(ih->saddr.byte2) + L"." +
+                               std::to_wstring(ih->saddr.byte3) + L"." +
+                               std::to_wstring(ih->saddr.byte4);
+    
+                    destIpStr = std::to_wstring(ih->daddr.byte1) + L"." +
+                                std::to_wstring(ih->daddr.byte2) + L"." +
+                                std::to_wstring(ih->daddr.byte3) + L"." +
+                                std::to_wstring(ih->daddr.byte4);
+
+                    if (ih->proto == 6) {
+                        protoStr = L"TCP";
+                    } else if (ih->proto == 17) {
+                        protoStr = L"UDP";
+                    } else {
+                        protoStr = L"Other";
+                    }
+                    
+                    lengthStr = std::to_wstring(packet->GetLength());
+
+                    columnsValues[2] = srcIpStr.c_str();
+                    columnsValues[3] = destIpStr.c_str();
+                    columnsValues[4] = protoStr.c_str(); 
+                    columnsValues[5] = lengthStr.c_str();
+                } else if (eth_type == 0x86DD) {  // IPv6
+                    ipv6_header* ih6 = (ipv6_header*)ip_data;
+
+                    std::wstring srcIpStr = std::to_wstring(combineTwoBytes(ih6->saddr.segments[0], ih6->saddr.segments[1])) + L":" +
+                                            std::to_wstring(combineTwoBytes(ih6->saddr.segments[2], ih6->saddr.segments[3])) + L":" +
+                                            std::to_wstring(combineTwoBytes(ih6->saddr.segments[4], ih6->saddr.segments[5])) + L":" +
+                                            std::to_wstring(combineTwoBytes(ih6->saddr.segments[6], ih6->saddr.segments[7])) + L":" +
+                                            std::to_wstring(combineTwoBytes(ih6->saddr.segments[8], ih6->saddr.segments[9])) + L":" +
+                                            std::to_wstring(combineTwoBytes(ih6->saddr.segments[10], ih6->saddr.segments[11])) + L":" +
+                                            std::to_wstring(combineTwoBytes(ih6->saddr.segments[12], ih6->saddr.segments[13])) + L":" +
+                                            std::to_wstring(combineTwoBytes(ih6->saddr.segments[14], ih6->saddr.segments[15]));
+
+                    std::wstring destIpStr = std::to_wstring(combineTwoBytes(ih6->daddr.segments[0], ih6->daddr.segments[1])) + L":" +
+                                             std::to_wstring(combineTwoBytes(ih6->daddr.segments[2], ih6->daddr.segments[3])) + L":" +
+                                             std::to_wstring(combineTwoBytes(ih6->daddr.segments[4], ih6->daddr.segments[5])) + L":" +
+                                             std::to_wstring(combineTwoBytes(ih6->daddr.segments[6], ih6->daddr.segments[7])) + L":" +
+                                             std::to_wstring(combineTwoBytes(ih6->daddr.segments[8], ih6->daddr.segments[9])) + L":" +
+                                             std::to_wstring(combineTwoBytes(ih6->daddr.segments[10], ih6->daddr.segments[11])) + L":" +
+                                             std::to_wstring(combineTwoBytes(ih6->daddr.segments[12], ih6->daddr.segments[13])) + L":" +
+                                             std::to_wstring(combineTwoBytes(ih6->daddr.segments[14], ih6->daddr.segments[15]));
+
+                    if (ih6->next_header == 6) {
+                        protoStr = L"TCP";
+                    } else if (ih6->next_header == 17) {
+                        protoStr = L"UDP";
+                    } else {
+                        protoStr = L"Other";
+                    }
+                    
+                    std::wstring lengthStr = std::to_wstring(packet->GetLength());
+
+                    columnsValues[2] = srcIpStr.c_str();
+                    columnsValues[3] = destIpStr.c_str();
+                    columnsValues[4] = protoStr.c_str();
+                    columnsValues[5] = lengthStr.c_str();
+                } else {
+                    columnsValues[2] = L"N/A";
+                    columnsValues[3] = L"N/A";
+                    columnsValues[4] = L"N/A";
+                    columnsValues[5] = L"N/A";
+                }
+
+                // TODO: REFACTOR THIS, WE HAVE IT IN ULISTVIEW
+                LVITEM lvItem;
+                lvItem.mask = LVIF_TEXT;
+                lvItem.iItem = ListView_GetItemCount(hListViewPackets); 
+                lvItem.iSubItem = 0;
+                lvItem.pszText = const_cast<LPWSTR>(columnsValues[0]);
+                ListView_InsertItem(hListViewPackets, &lvItem);
+
+                for (int i = 1; i < 6; i++) {
+                    ListView_SetItemText(hListViewPackets, lvItem.iItem, i, const_cast<LPWSTR>(columnsValues[i]))
+                }
+            }
+                
+            break;        
         }
         
         case WM_CTLCOLORSTATIC: {
@@ -149,6 +346,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
         }
         
         case WM_DESTROY:
+            // TODO: ADD DELETING ALL OBJECTS
             PostQuitMessage(0);
             break;
 

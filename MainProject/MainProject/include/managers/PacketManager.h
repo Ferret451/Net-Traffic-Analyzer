@@ -9,8 +9,11 @@
     public:
         PacketManager();
         
-        void AddPacket(Packet packet);
+        void AddPacket(Packet *packet);
         Packet *GetPacket(int index);
+        Packet **GetPackets();
+        int GetPacketsCount();
+        void ClearPackets();
 
         ~PacketManager();
     };

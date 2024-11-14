@@ -40,10 +40,10 @@ void PacketsCapturer::StartCapturing() {
             //TODO: add printing error
         }
 
-        Packet *packet = new Packet(header, pkt_data);
-        packetManager->AddPacket(*packet);
+        Packet *packet = new Packet(header, pkt_data, adHandle);
+        packetManager->AddPacket(packet);
 
-        PostMessage(hwnd, WM_PAINT, 0, 0);
+        PostMessage(hwnd, WM_ADD_LISTVIEW_ITEM, 0, 0);
     }
 
     pcap_close(adHandle);
