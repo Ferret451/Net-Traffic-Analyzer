@@ -1,5 +1,5 @@
 #pragma once
-#include "../PacketsCapturer.h"
+#include "../../include/packet_utils/PacketsCapturer.h"
 
 class CaptureManager {
     int capturersCount = 0;

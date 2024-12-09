@@ -1,6 +1,7 @@
-#include "../include/PacketsCapturer.h"
-#include "../help/Consts.h"
-#include "../include/Packet.h"
+#include "../../include/packet_utils/PacketsCapturer.h"
+#include "../../help/Consts.h"
+#include "../../include/packet_utils/Packet.h"
+#include "../../include/managers/PacketManager.h"
 
 PacketsCapturer::PacketsCapturer(const char* deviceName, PacketManager *packetManager, HWND hwnd) {
     this->deviceName = deviceName;

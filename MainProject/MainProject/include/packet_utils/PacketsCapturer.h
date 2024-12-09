@@ -1,7 +1,7 @@
 #pragma once
 #include <mutex>
 
-#include "managers/PacketManager.h"
+#include "../managers/PacketManager.h"
 
 class PacketsCapturer {
     PacketManager *packetManager;

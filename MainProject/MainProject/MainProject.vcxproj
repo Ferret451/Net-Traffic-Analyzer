@@ -308,7 +308,7 @@
       <LinkCompiled>true</LinkCompiled>
     </ClCompile>
     <ClCompile Include="src\managers\PacketManager.cpp" />
-    <ClCompile Include="src\Packet.cpp">
+    <ClCompile Include="src\packet_utils\Packet.cpp">
       <RuntimeLibrary>MultiThreadedDebugDll</RuntimeLibrary>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <Optimization>Disabled</Optimization>
@@ -381,7 +381,7 @@
       <AdditionalIncludeDirectories>D:\Unik\СП\Kursach\Net-Traffic-Analyzer\npcap-sdk-1.13\Include;</AdditionalIncludeDirectories>
       <LinkCompiled>true</LinkCompiled>
     </ClCompile>
-    <ClCompile Include="src\PacketsCapturer.cpp">
+    <ClCompile Include="src\packet_utils\PacketsCapturer.cpp">
       <RuntimeLibrary>MultiThreadedDebugDll</RuntimeLibrary>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <Optimization>Disabled</Optimization>
@@ -754,8 +754,8 @@
     <ClInclude Include="include\managers\CaptureManager.h" />
     <ClInclude Include="include\managers\DeviceManager.h" />
     <ClInclude Include="include\managers\PacketManager.h" />
-    <ClInclude Include="include\Packet.h" />
-    <ClInclude Include="include\PacketsCapturer.h" />
+    <ClInclude Include="include\packet_utils\Packet.h" />
+    <ClInclude Include="include\packet_utils\PacketsCapturer.h" />
     <ClInclude Include="include\ui\UIButton.h" />
     <ClInclude Include="include\ui\UIComboBox.h" />
     <ClInclude Include="include\ui\UIElement.h" />

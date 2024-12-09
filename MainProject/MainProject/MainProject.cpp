@@ -318,16 +318,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
                     columnsValues[5] = L"N/A";
                 }
 
-                // TODO: REFACTOR THIS, WE HAVE IT IN ULISTVIEW
-                LVITEM lvItem;
-                lvItem.mask = LVIF_TEXT;
-                lvItem.iItem = ListView_GetItemCount(lvPackets.GetHWindow()); 
-                lvItem.iSubItem = 0;
-                lvItem.pszText = const_cast<LPWSTR>(columnsValues[0]);
-                ListView_InsertItem(lvPackets.GetHWindow(), &lvItem);
+                boolean isScrolledDown = lvPackets.isScrolledDown();
+                lvPackets.AddRow(columnsValues);
 
-                for (int i = 1; i < 6; i++) {
-                    ListView_SetItemText(lvPackets.GetHWindow(), lvItem.iItem, i, const_cast<LPWSTR>(columnsValues[i]))
+                if (isScrolledDown) {
+                    lvPackets.ScrollDown();
                 }
             }
                 

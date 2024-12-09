@@ -1,6 +1,6 @@
     #pragma once
 
-    #include "../Packet.h"
+    #include "../packet_utils/Packet.h"
     #include "../../help/Consts.h"
 
     class PacketManager {

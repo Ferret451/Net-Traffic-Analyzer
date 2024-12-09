@@ -14,19 +14,46 @@ void UIListView::AddColumns(const wchar_t* columnsHeaders[], int columnsCount) {
 }
 
 void UIListView::AddRow(const wchar_t* columnsValues[]) {
+    HWND hListView = GetHWindow();
+    
     LVITEM lvItem;
     lvItem.mask = LVIF_TEXT;
-    lvItem.iItem = ListView_GetItemCount(GetHWindow()); 
+    lvItem.iItem = ListView_GetItemCount(hListView); 
     lvItem.iSubItem = 0;
     lvItem.pszText = const_cast<LPWSTR>(columnsValues[0]);
-    ListView_InsertItem(GetHWindow(), &lvItem);
+    ListView_InsertItem(hListView, &lvItem);
     
     for (int i = 1; i < _columnsCount; i++) {
-        ListView_SetItemText(GetHWindow(), lvItem.iItem, i, const_cast<LPWSTR>(columnsValues[i]))
+        ListView_SetItemText(hListView, lvItem.iItem, i, const_cast<LPWSTR>(columnsValues[i]))
     }
 }
 
 void UIListView::ClearColumns() {
     while (ListView_DeleteColumn(GetHWindow(), 0)) {}
     _columnsCount = 0;
+}
+
+boolean UIListView::isScrolledDown() {
+    HWND hListView = GetHWindow();
+    int itemCount = ListView_GetItemCount(hListView);
+
+    if (itemCount > 0) {
+        int topIndex = ListView_GetTopIndex(hListView);
+        
+        int countPerPage = ListView_GetCountPerPage(hListView);
+        
+        if (topIndex + countPerPage >= itemCount) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void UIListView::ScrollDown() {
+    HWND hListView = GetHWindow();
+    int itemCount = ListView_GetItemCount(hListView);
+    if (itemCount > 0) {
+        ListView_EnsureVisible(hListView, itemCount - 1, FALSE);
+    }
 }

@@ -17,4 +17,7 @@ public:
     void AddColumns(const wchar_t* columnsHeaders[], int columnsCount);
     void AddRow(const wchar_t* columnsValues[]);
     void ClearColumns();
+
+    boolean isScrolledDown();
+    void ScrollDown();
 };
