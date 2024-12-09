@@ -4,8 +4,10 @@
 #include <string>
 #include <cstdint>
 
+#include "help/NetUtils.h"
 #include "include/managers/CaptureManager.h"
 #include "include/managers/DeviceManager.h"
+#include "include/packet_utils/PacketParser.h"
 #include "include/ui/UIButton.h"
 #include "include/ui/UIComboBox.h"
 #include "include/ui/UILabel.h"
@@ -46,29 +48,6 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nC
     }
 
     return msg.wParam;
-}
-
-// Combining two bytes into unsigned short
-unsigned short combineTwoBytes(unsigned short high, unsigned short low) {
-    return (u_short)(high << 8 | low);
-}
-
-// Getting the length of the Wi-Fi header, because it can be 24 or 30 bytes
-int getWifiHeaderLength(const u_char* pkt_data) {
-    const wifi_header* wh = reinterpret_cast<const wifi_header*>(pkt_data);
-
-    uint16_t frame_control = wh->frame_control; 
-    uint8_t high_byte = frame_control >> 8 & 0xFF; 
-    uint8_t low_byte = frame_control & 0xFF; 
-    uint16_t combined = combineTwoBytes(high_byte, low_byte);
-    
-    int type = (combined & 0x0C) >> 2;
-    if (type == 2) { 
-        bool hasAddr4 = combined & 0x03;
-        return hasAddr4 ? 30 : 24;
-    }
-    
-    return 24;
 }
 
 // Thread function for capturing packets
@@ -216,107 +195,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             int receivedCount = packetManager.GetPacketsCount();
             int displayedCount = ListView_GetItemCount(lvPackets.GetHWindow());
                 
+            PacketParser parser;
             for (int i = displayedCount; i < receivedCount; i++) {
-                Packet *packet = packetManager.GetPacket(i);
-                const u_char *data = packet->GetData();
-                const wchar_t* columnsValues[6];
-                
-                std::wstring packetIndex = std::to_wstring(i);
-                std::wstring timeString = packet->GetTimeString();
+                Packet* packet = packetManager.GetPacket(i);
+                ParsedPacket parsed = parser.ParsePacket(i, *packet);
 
-                columnsValues[0] = packetIndex.c_str();
-                columnsValues[1] = timeString.c_str();
-                
-                int link_type = packet->GetLinkType();
-                const u_char* ip_data = nullptr;
-                u_short eth_type = 0;
-                
-                if (link_type == DLT_EN10MB) {  // Ethernet
-                    eth_type = combineTwoBytes(data[12], data[13]);
-                    ip_data = data + 14;
-                    // // IPv4
-                    // if (eth_type == 0x0800) { 
-                    //     ip_data = data + 14;
-                    // }
-                    // // IPv6
-                    // else if (eth_type == 0x86DD) { 
-                    //     ip_data = data + 14; 
-                    // }
-                }
-                else if (link_type == DLT_IEEE802_11) { // WI-FI
-                    int wifi_header_len = getWifiHeaderLength(data); 
-                    eth_type = combineTwoBytes(data[wifi_header_len], data[wifi_header_len + 1]);
-                }
-
-                std::wstring srcIpStr, destIpStr, protoStr, lengthStr;
-                if (eth_type == 0x0800) {  // IPv4
-                    ipv4_header* ih = (ipv4_header*)ip_data;
-
-                    srcIpStr = std::to_wstring(ih->saddr.byte1) + L"." +
-                               std::to_wstring(ih->saddr.byte2) + L"." +
-                               std::to_wstring(ih->saddr.byte3) + L"." +
-                               std::to_wstring(ih->saddr.byte4);
-    
-                    destIpStr = std::to_wstring(ih->daddr.byte1) + L"." +
-                                std::to_wstring(ih->daddr.byte2) + L"." +
-                                std::to_wstring(ih->daddr.byte3) + L"." +
-                                std::to_wstring(ih->daddr.byte4);
-
-                    if (ih->proto == 6) {
-                        protoStr = L"TCP";
-                    } else if (ih->proto == 17) {
-                        protoStr = L"UDP";
-                    } else {
-                        protoStr = L"Other";
-                    }
-                    
-                    lengthStr = std::to_wstring(packet->GetLength());
-
-                    columnsValues[2] = srcIpStr.c_str();
-                    columnsValues[3] = destIpStr.c_str();
-                    columnsValues[4] = protoStr.c_str(); 
-                    columnsValues[5] = lengthStr.c_str();
-                } else if (eth_type == 0x86DD) {  // IPv6
-                    ipv6_header* ih6 = (ipv6_header*)ip_data;
-
-                    std::wstring srcIpStr = std::to_wstring(combineTwoBytes(ih6->saddr.segments[0], ih6->saddr.segments[1])) + L":" +
-                                            std::to_wstring(combineTwoBytes(ih6->saddr.segments[2], ih6->saddr.segments[3])) + L":" +
-                                            std::to_wstring(combineTwoBytes(ih6->saddr.segments[4], ih6->saddr.segments[5])) + L":" +
-                                            std::to_wstring(combineTwoBytes(ih6->saddr.segments[6], ih6->saddr.segments[7])) + L":" +
-                                            std::to_wstring(combineTwoBytes(ih6->saddr.segments[8], ih6->saddr.segments[9])) + L":" +
-                                            std::to_wstring(combineTwoBytes(ih6->saddr.segments[10], ih6->saddr.segments[11])) + L":" +
-                                            std::to_wstring(combineTwoBytes(ih6->saddr.segments[12], ih6->saddr.segments[13])) + L":" +
-                                            std::to_wstring(combineTwoBytes(ih6->saddr.segments[14], ih6->saddr.segments[15]));
-
-                    std::wstring destIpStr = std::to_wstring(combineTwoBytes(ih6->daddr.segments[0], ih6->daddr.segments[1])) + L":" +
-                                             std::to_wstring(combineTwoBytes(ih6->daddr.segments[2], ih6->daddr.segments[3])) + L":" +
-                                             std::to_wstring(combineTwoBytes(ih6->daddr.segments[4], ih6->daddr.segments[5])) + L":" +
-                                             std::to_wstring(combineTwoBytes(ih6->daddr.segments[6], ih6->daddr.segments[7])) + L":" +
-                                             std::to_wstring(combineTwoBytes(ih6->daddr.segments[8], ih6->daddr.segments[9])) + L":" +
-                                             std::to_wstring(combineTwoBytes(ih6->daddr.segments[10], ih6->daddr.segments[11])) + L":" +
-                                             std::to_wstring(combineTwoBytes(ih6->daddr.segments[12], ih6->daddr.segments[13])) + L":" +
-                                             std::to_wstring(combineTwoBytes(ih6->daddr.segments[14], ih6->daddr.segments[15]));
-
-                    if (ih6->next_header == 6) {
-                        protoStr = L"TCP";
-                    } else if (ih6->next_header == 17) {
-                        protoStr = L"UDP";
-                    } else {
-                        protoStr = L"Other";
-                    }
-                    
-                    std::wstring lengthStr = std::to_wstring(packet->GetLength());
-
-                    columnsValues[2] = srcIpStr.c_str();
-                    columnsValues[3] = destIpStr.c_str();
-                    columnsValues[4] = protoStr.c_str();
-                    columnsValues[5] = lengthStr.c_str();
-                } else {
-                    columnsValues[2] = L"N/A";
-                    columnsValues[3] = L"N/A";
-                    columnsValues[4] = L"N/A";
-                    columnsValues[5] = L"N/A";
-                }
+                const wchar_t* columnsValues[6] = {
+                    parsed.index.c_str(),
+                    parsed.time.c_str(),
+                    parsed.srcIp.c_str(),
+                    parsed.destIp.c_str(),
+                    parsed.protocol.c_str(),
+                    parsed.length.c_str()
+                };
 
                 boolean isScrolledDown = lvPackets.isScrolledDown();
                 lvPackets.AddRow(columnsValues);
