@@ -85,11 +85,11 @@ DWORD WINAPI CaptureThreadFunction(LPVOID lpParam) {
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
     static HBRUSH hBrush = NULL;
     
-    static HWND hComboBoxDevices = NULL;
-    static HWND hLabelDevices = NULL;
-    static HWND hButtonStart = NULL;
-    static HWND hButtonStop = NULL;
-    static HWND hListViewPackets = NULL;
+    static UILabel lbDevices = UILabel();
+    static UIComboBox cbDevices = UIComboBox();
+    static UIButton btnStart = UIButton();
+    static UIButton btnStop = UIButton();
+    static UIListView lvPackets = UIListView();
     
     static DeviceManager deviceManager;
     static CaptureManager captureManager;
@@ -103,16 +103,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             hBrush = CreateSolidBrush(RGB(255, 255, 255));
 
             // Devices label
-            UILabel lbDevices = UILabel(L"STATIC", L"Select Device:",
+            lbDevices = UILabel(L"STATIC", L"Select Device:",
                 WS_CHILD | WS_VISIBLE,
                 10, 30, 200, 20, hWnd, (HMENU) id_lb_devices, NULL, NULL);
-            hLabelDevices = lbDevices.GetHWindow();
 
             // Devices combobox
-            UIComboBox cbDevices = UIComboBox(L"COMBOBOX", NULL,
+            cbDevices = UIComboBox(L"COMBOBOX", NULL,
                 WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL,
                 10, 50, 200, 100, hWnd, (HMENU) id_cb_devices, NULL, NULL);
-            hComboBoxDevices = cbDevices.GetHWindow();
 
             char **devices = deviceManager.GetDevicesDescriptions();
             int devicesCount = deviceManager.GetDevicesCount();
@@ -124,24 +122,21 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             delete [] devices;
 
             // Start button
-            UIButton btnStart = UIButton(L"BUTTON", L">",
+            btnStart = UIButton(L"BUTTON", L">",
                 WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
                 250, 30, 30, 30, hWnd, (HMENU) id_btn_start, NULL, NULL);
-            hButtonStart = btnStart.GetHWindow();
-            EnableWindow(hButtonStart, FALSE);
+            EnableWindow(btnStart.GetHWindow(), FALSE);
 
             // Stop button
-            UIButton btnStop = UIButton(L"BUTTON", L"0", 
+            btnStop = UIButton(L"BUTTON", L"0", 
                 WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
                 295, 30, 30, 30, hWnd, (HMENU) id_btn_stop, NULL, NULL);
-            hButtonStop = btnStop.GetHWindow();
-            EnableWindow(hButtonStop, FALSE);
+            EnableWindow(btnStop.GetHWindow(), FALSE);
 
             // Packets listview
-            UIListView lvPackets = UIListView(WC_LISTVIEW, NULL,
+            lvPackets = UIListView(WC_LISTVIEW, NULL,
                 WS_CHILD | WS_VISIBLE | LVS_REPORT,
                 250, 80, 750, 370, hWnd, (HMENU) id_lv_packets, NULL, NULL);
-            hListViewPackets = lvPackets.GetHWindow();
                 
             const wchar_t* columnsHeaders[] = { L"No.", L"Time", L"Source", L"Destination", L"Protocol", L"Length" };
             lvPackets.AddColumns(columnsHeaders, 6);
@@ -153,13 +148,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             if (HIWORD(wParam) == CBN_SELCHANGE) {
                 if (LOWORD(wParam) == id_cb_devices) {
                     int i = 0;
-                    int selectedIndex = SendMessage(hComboBoxDevices, CB_GETCURSEL, 0, 0);
+                    int selectedIndex = SendMessage(cbDevices.GetHWindow(), CB_GETCURSEL, 0, 0);
          
                     if (selectedIndex != CB_ERR) {
                         wchar_t selectedItemWChar[256];
                         char selectedItemChar[256];
                     
-                        SendMessage(hComboBoxDevices, CB_GETLBTEXT, selectedIndex, (LPARAM)selectedItemWChar);
+                        SendMessage(cbDevices.GetHWindow(), CB_GETLBTEXT, selectedIndex, (LPARAM)selectedItemWChar);
                         WideCharToMultiByte(CP_ACP, 0, selectedItemWChar, -1,
                             selectedItemChar, 256, NULL, NULL);
 
@@ -171,20 +166,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
                             captureManager.SetCurrentCapturer(packetsCapturer);
                         }
                     
-                        EnableWindow(hButtonStart, TRUE);
+                        EnableWindow(btnStart.GetHWindow(), TRUE);
                     }
                 }
             }
                 
             switch (LOWORD(wParam)) {
                 case id_btn_start:
-                    if (SendMessage(hComboBoxDevices, CB_GETCURSEL, 0, 0) == -1)
+                    if (SendMessage(cbDevices.GetHWindow(), CB_GETCURSEL, 0, 0) == -1)
                         //TODO: add printing error
 
                         break;
                     
                     packetManager.ClearPackets();
-                    ListView_DeleteAllItems(hListViewPackets);
+                    ListView_DeleteAllItems(lvPackets.GetHWindow());
                 
                     hCaptureThread = CreateThread(
                         NULL,                   
@@ -195,9 +190,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
                         NULL                    
                     );
 
-                    EnableWindow(hButtonStart, FALSE);
-                    EnableWindow(hButtonStop, TRUE);
-                    EnableWindow(hComboBoxDevices, FALSE);
+                    EnableWindow(btnStart.GetHWindow(), FALSE);
+                    EnableWindow(btnStop.GetHWindow(), TRUE);
+                    EnableWindow(cbDevices.GetHWindow(), FALSE);
                     break;
                 case id_btn_stop:
                     captureManager.GetCurrentCapturer()->StopCapturing();
@@ -206,9 +201,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
                         CloseHandle(hCaptureThread); 
                     }
                 
-                    EnableWindow(hButtonStart, TRUE);
-                    EnableWindow(hButtonStop, FALSE);
-                    EnableWindow(hComboBoxDevices, TRUE);
+                    EnableWindow(btnStart.GetHWindow(), TRUE);
+                    EnableWindow(btnStop.GetHWindow(), FALSE);
+                    EnableWindow(cbDevices.GetHWindow(), TRUE);
                     break;
                 default:
                     break;
@@ -219,7 +214,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
         case WM_ADD_LISTVIEW_ITEM: {
             int receivedCount = packetManager.GetPacketsCount();
-            int displayedCount = ListView_GetItemCount(hListViewPackets);
+            int displayedCount = ListView_GetItemCount(lvPackets.GetHWindow());
                 
             for (int i = displayedCount; i < receivedCount; i++) {
                 Packet *packet = packetManager.GetPacket(i);
@@ -326,13 +321,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
                 // TODO: REFACTOR THIS, WE HAVE IT IN ULISTVIEW
                 LVITEM lvItem;
                 lvItem.mask = LVIF_TEXT;
-                lvItem.iItem = ListView_GetItemCount(hListViewPackets); 
+                lvItem.iItem = ListView_GetItemCount(lvPackets.GetHWindow()); 
                 lvItem.iSubItem = 0;
                 lvItem.pszText = const_cast<LPWSTR>(columnsValues[0]);
-                ListView_InsertItem(hListViewPackets, &lvItem);
+                ListView_InsertItem(lvPackets.GetHWindow(), &lvItem);
 
                 for (int i = 1; i < 6; i++) {
-                    ListView_SetItemText(hListViewPackets, lvItem.iItem, i, const_cast<LPWSTR>(columnsValues[i]))
+                    ListView_SetItemText(lvPackets.GetHWindow(), lvItem.iItem, i, const_cast<LPWSTR>(columnsValues[i]))
                 }
             }
                 

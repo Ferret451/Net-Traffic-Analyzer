@@ -12,6 +12,8 @@ public:
         HINSTANCE hInstance, LPVOID lpParam)
     : UIElement(lpClassName, lpWindowName, dwStyle, x, y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam) {}
 
+    UIListView () = default;
+
     void AddColumns(const wchar_t* columnsHeaders[], int columnsCount);
     void AddRow(const wchar_t* columnsValues[]);
     void ClearColumns();

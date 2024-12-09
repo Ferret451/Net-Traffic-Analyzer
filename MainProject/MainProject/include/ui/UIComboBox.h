@@ -9,6 +9,8 @@ public:
         HINSTANCE hInstance, LPVOID lpParam)
     : UIElement(lpClassName, lpWindowName, dwStyle, x, y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam) {}
 
+    UIComboBox () = default;
+
     void FillWithDevices(char **devices, int devicesCount);
 
     int CalcMaxTextWidth();

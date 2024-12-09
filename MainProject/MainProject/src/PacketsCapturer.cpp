@@ -38,6 +38,8 @@ void PacketsCapturer::StartCapturing() {
             printf("Error reading the packets: %s\n", pcap_geterr(adHandle));
 
             //TODO: add printing error
+
+            return;
         }
 
         Packet *packet = new Packet(header, pkt_data, adHandle);

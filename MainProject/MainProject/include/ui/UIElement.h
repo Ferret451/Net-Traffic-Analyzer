@@ -15,5 +15,7 @@ public:
         int x, int y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu,
         HINSTANCE hInstance, LPVOID lpParam);
 
+    UIElement();
+
     HWND GetHWindow() { return hWindow; }
 };

@@ -14,6 +14,21 @@ UIElement::UIElement(LPCWSTR lpClassName, LPCWSTR lpWindowName, DWORD dwStyle,
     this->hInstance = hInstance;
     this->lpParam = lpParam;
 
-    hWindow = CreateWindow(lpClassName, lpWindowName, dwStyle, x, y, nWidth, nHeight,
+    this->hWindow = CreateWindow(lpClassName, lpWindowName, dwStyle, x, y, nWidth, nHeight,
         hWndParent, hMenu, hInstance, lpParam);
+}
+
+UIElement::UIElement() {
+    this->lpClassName = nullptr;
+    this->lpWindowName = nullptr;
+    this->dwStyle = NULL;
+    this->x = NULL;
+    this->y = NULL;
+    this->nWidth = NULL;
+    this->nHeight = NULL;
+    this->hWndParent = nullptr;
+    this->hMenu = nullptr;
+    this->hInstance = nullptr;
+    this->lpParam = nullptr;
+    this->hWindow = nullptr;
 }
