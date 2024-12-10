@@ -13,6 +13,7 @@ public:
     PacketsCapturer(const char* deviceName, PacketManager *packetManager, HWND hwnd);
 
     const char* GetDeviceName();
+    boolean IsCapturing() const { return isCapturing; };
     
     void StartCapturing();
     void StopCapturing();

@@ -16,6 +16,15 @@
 #include "include/ui/UILabel.h"
 #include "include/ui/UIListView.h"
 
+ACCEL accelTable[] = {
+    { FVIRTKEY | FCONTROL, 'O', id_btn_open },
+    { FVIRTKEY | FCONTROL, 'S', id_btn_save },
+    { FVIRTKEY | FCONTROL | FSHIFT, 'S', id_btn_save_as },
+    { FVIRTKEY, VK_F9, id_btn_start },
+    { FVIRTKEY, VK_F10, id_btn_stop },
+    { FVIRTKEY | FCONTROL, 'Q', id_btn_quit }
+};
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow) {
@@ -36,8 +45,10 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nC
 
     RegisterClassEx(&wcex);
     
+    HACCEL hAccel = CreateAcceleratorTable(accelTable, ARRAYSIZE(accelTable));
+    
     hWnd = CreateWindow(L"NetTrafficAnalyzer", L"Net Traffic Analyzer - ",
-        WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, 0,
+        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, CW_USEDEFAULT, 0,
         CW_USEDEFAULT, 0, NULL, NULL, hInst, NULL);
     
     ShowWindow(hWnd, nCmdShow);
@@ -45,12 +56,14 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nC
 
     InitCommonControls();
 
-    HMENU hMenu = LoadMenu(hInst, MAKEINTRESOURCE(main_menu));
+    HMENU hMenu = LoadMenu(hInst, MAKEINTRESOURCE(id_main_menu));
     SetMenu(hWnd, hMenu);
     
     while (GetMessage(&msg, NULL, 0, 0)) {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
+        if (!TranslateAccelerator(hWnd, hAccel, &msg)) {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
     }
 
     return msg.wParam;
@@ -143,12 +156,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             // Devices label
             lbDevices = UILabel(L"STATIC", L"Select Device:",
                 WS_CHILD | WS_VISIBLE,
-                10, 30, 200, 20, hWnd, (HMENU) id_lb_devices, NULL, NULL);
+                10, 10, 200, 20, hWnd, (HMENU) id_lb_devices, NULL, NULL);
 
             // Devices combobox
             cbDevices = UIComboBox(L"COMBOBOX", NULL,
                 WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL,
-                10, 50, 200, 100, hWnd, (HMENU) id_cb_devices, NULL, NULL);
+                10, 30, 200, 100, hWnd, (HMENU) id_cb_devices, NULL, NULL);
 
             char **devices = deviceManager.GetDevicesDescriptions();
             int devicesCount = deviceManager.GetDevicesCount();
@@ -162,36 +175,36 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             // Start button
             btnStart = UIButton(L"BUTTON", L">",
                 WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                250, 30, 30, 30, hWnd, (HMENU) id_btn_start, NULL, NULL);
+                250, 10, 30, 30, hWnd, (HMENU) id_btn_start, NULL, NULL);
             EnableWindow(btnStart.GetHWindow(), FALSE);
 
             // Stop button
             btnStop = UIButton(L"BUTTON", L"0", 
                 WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                295, 30, 30, 30, hWnd, (HMENU) id_btn_stop, NULL, NULL);
+                295, 10, 30, 30, hWnd, (HMENU) id_btn_stop, NULL, NULL);
             EnableWindow(btnStop.GetHWindow(), FALSE);
 
             // Open button
             btnOpen = UIButton(L"BUTTON", L"OP", 
                 WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                880, 30, 30, 30, hWnd, (HMENU) id_btn_open, NULL, NULL);
+                880, 10, 30, 30, hWnd, (HMENU) id_btn_open, NULL, NULL);
 
             // Save button
             btnSave = UIButton(L"BUTTON", L"S", 
                 WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                925, 30, 30, 30, hWnd, (HMENU) id_btn_save, NULL, NULL);
+                925, 10, 30, 30, hWnd, (HMENU) id_btn_save, NULL, NULL);
             EnableWindow(btnSave.GetHWindow(), FALSE);
                 
             // Save as button
             btnSaveAs = UIButton(L"BUTTON", L"SA", 
                 WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                970, 30, 30, 30, hWnd, (HMENU) id_btn_save_as, NULL, NULL);
+                970, 10, 30, 30, hWnd, (HMENU) id_btn_save_as, NULL, NULL);
             EnableWindow(btnSaveAs.GetHWindow(), FALSE);
                 
             // Packets listview
             lvPackets = UIListView(WC_LISTVIEW, NULL,
                 WS_CHILD | WS_VISIBLE | LVS_REPORT,
-                250, 80, 750, 370, hWnd, (HMENU) id_lv_packets, NULL, NULL);
+                250, 60, 750, 390, hWnd, (HMENU) id_lv_packets, NULL, NULL);
                 
             const wchar_t* columnsHeaders[] = { L"No.", L"Time", L"Source", L"Destination", L"Protocol", L"Length" };
             lvPackets.AddColumns(columnsHeaders, 6);
@@ -227,9 +240,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             }
 
             boolean isCancelled = false;
-            switch (LOWORD(wParam))
-            {
+            switch (LOWORD(wParam)) {
             case id_btn_start:
+                if (captureManager.GetCurrentCapturer() != nullptr) {
+                    if (captureManager.GetCurrentCapturer()->IsCapturing()) {
+                        break;
+                    }
+                }
+                
                 if (!fileDialog.isFileSaved()) {
                     int result = NotifyForSave();
 
@@ -293,6 +311,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
                 EnableWindow(cbDevices.GetHWindow(), TRUE);
                 break;
             case id_btn_save:
+                if (captureManager.GetCurrentCapturer() != nullptr) {
+                    if (captureManager.GetCurrentCapturer()->IsCapturing()) {
+                        break;
+                    }
+                }
+                
                 if (!fileDialog.isFileSaved()) {
                     isCancelled = !fileDialog.SaveFileDialog();
                 }
@@ -306,94 +330,110 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
                 }
                 
                     break;
-                case id_btn_open:
-                    if (!fileDialog.isFileSaved()) {
-                        int result = NotifyForSave();
+            case id_btn_open:
+                if (!fileDialog.isFileSaved()) {
+                    int result = NotifyForSave();
 
-                        switch (result) {
-                        case IDYES:
-                            isCancelled = !fileDialog.SaveFileDialog();
+                    switch (result) {
+                    case IDYES:
+                        isCancelled = !fileDialog.SaveFileDialog();
 
-                            if (!isCancelled) {
-                                SavePackets(packetManager, fileDialog.GetLastPath());
-                            }
+                        if (!isCancelled) {
+                            SavePackets(packetManager, fileDialog.GetLastPath());
+                        }
 
-                            isCancelled = false;
-                            
-                            break;
-                        case IDNO:
-                            
-                            break;
-                        default:
-                            isCancelled = true;
-                            
-                            break;
+                        isCancelled = false;
+                        
+                        break;
+                    case IDNO:
+                        
+                        break;
+                    default:
+                        isCancelled = true;
+                        
+                        break;
+                    }
+                }
+            
+                if (!isCancelled) {
+                    isCancelled = !fileDialog.OpenFileDialog();
+
+                    if (isCancelled) {
+                        break;
+                    }
+                    
+                    LoadPackets(packetManager, fileDialog.GetLastPath());
+
+                    ListView_DeleteAllItems(lvPackets.GetHWindow());
+                    PacketParser parser;
+                    for (int i = 0; i < packetManager.GetPacketsCount(); i++) {
+                        Packet* packet = packetManager.GetPacket(i);
+                        ParsedPacket parsed = parser.ParsePacket(i, *packet);
+
+                        const wchar_t* columnsValues[6] = {
+                            parsed.index.c_str(),
+                            parsed.time.c_str(),
+                            parsed.srcIp.c_str(),
+                            parsed.destIp.c_str(),
+                            parsed.protocol.c_str(),
+                            parsed.length.c_str()
+                        };
+
+                        boolean isScrolledDown = lvPackets.isScrolledDown();
+                        lvPackets.AddRow(columnsValues);
+
+                        if (isScrolledDown) {
+                            lvPackets.ScrollDown();
                         }
                     }
-                
-                    if (!isCancelled) {
-                        fileDialog.OpenFileDialog();
-                        LoadPackets(packetManager, fileDialog.GetLastPath());
-
-                        ListView_DeleteAllItems(lvPackets.GetHWindow());
-                        PacketParser parser;
-                        for (int i = 0; i < packetManager.GetPacketsCount(); i++) {
-                            Packet* packet = packetManager.GetPacket(i);
-                            ParsedPacket parsed = parser.ParsePacket(i, *packet);
-
-                            const wchar_t* columnsValues[6] = {
-                                parsed.index.c_str(),
-                                parsed.time.c_str(),
-                                parsed.srcIp.c_str(),
-                                parsed.destIp.c_str(),
-                                parsed.protocol.c_str(),
-                                parsed.length.c_str()
-                            };
-
-                            boolean isScrolledDown = lvPackets.isScrolledDown();
-                            lvPackets.AddRow(columnsValues);
-
-                            if (isScrolledDown) {
-                                lvPackets.ScrollDown();
-                            }
-                        }
-                        
-                        UpdateWindowTitle(hWnd, fileDialog.GetLastPath());
-
-                        EnableWindow(btnSave.GetHWindow(), FALSE);
-                        EnableWindow(btnOpen.GetHWindow(), TRUE);
-                        EnableWindow(btnSaveAs.GetHWindow(), TRUE);
-                    }
-                        
-                    break;
-                case id_btn_save_as:
-                    fileDialog.SaveFileDialog();
-                    SavePackets(packetManager, fileDialog.GetLastPath());
-                
+                    
                     UpdateWindowTitle(hWnd, fileDialog.GetLastPath());
 
                     EnableWindow(btnSave.GetHWindow(), FALSE);
+                    EnableWindow(btnOpen.GetHWindow(), TRUE);
+                    EnableWindow(btnSaveAs.GetHWindow(), TRUE);
+                }
                     
-                    break;
-                case id_btn_quit:
-                    if (!fileDialog.isFileSaved()) {
-                        int result = NotifyForSave();
-                        if (result == IDYES) {
-                            isCancelled = !fileDialog.SaveFileDialog();
-
-                            if (!isCancelled) {
-                                SavePackets(packetManager, fileDialog.GetLastPath());
-                            } else {
-                                break; 
-                            }
-                        } else if (result == IDCANCEL) {
-                            break;
-                        }
+                break;
+            case id_btn_save_as:
+                if (captureManager.GetCurrentCapturer() != nullptr) {
+                    if (captureManager.GetCurrentCapturer()->IsCapturing()) {
+                        break;
                     }
-                    PostQuitMessage(0);
+                }
+                
+                isCancelled = !fileDialog.SaveFileDialog();
+
+                if(isCancelled) {
                     break;
-                default:
-                    break;
+                }
+                
+                SavePackets(packetManager, fileDialog.GetLastPath());
+            
+                UpdateWindowTitle(hWnd, fileDialog.GetLastPath());
+
+                EnableWindow(btnSave.GetHWindow(), FALSE);
+                
+                break;
+            case id_btn_quit:
+                if (!fileDialog.isFileSaved()) {
+                    int result = NotifyForSave();
+                    if (result == IDYES) {
+                        isCancelled = !fileDialog.SaveFileDialog();
+
+                        if (!isCancelled) {
+                            SavePackets(packetManager, fileDialog.GetLastPath());
+                        } else {
+                            break; 
+                        }
+                    } else if (result == IDCANCEL) {
+                        break;
+                    }
+                }
+                PostQuitMessage(0);
+                break;
+            default:
+                break;
             }
                 
             break;

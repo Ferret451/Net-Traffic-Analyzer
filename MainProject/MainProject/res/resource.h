@@ -1,7 +1,8 @@
 #ifndef RESOURCE_H
 #define RESOURCE_H
 
-#define main_menu 101
+#define id_main_menu 101
+
 #define id_cb_devices 201
 #define id_lb_devices 202
 #define id_btn_start 203
