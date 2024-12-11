@@ -50,4 +50,6 @@ struct ParsedPacket {
     std::wstring destIp;
     std::wstring protocol;
     std::wstring length;
+    std::wstring srcPort;
+    std::wstring destPort;
 };

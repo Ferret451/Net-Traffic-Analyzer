@@ -1,7 +1,7 @@
 #include "../../include/packet_utils/PacketParser.h"
 
 // Parsing ipv4
-void PacketParser::ParseIPv4(const u_char* ip_data, int packet_length, ParsedPacket& parsed) {
+void PacketParser::ParseIPv4(const u_char* ip_data, ParsedPacket& parsed) {
     ipv4_header* ih = (ipv4_header*)ip_data;
 
     parsed.srcIp = std::to_wstring(ih->saddr.byte1) + L"." +
@@ -14,8 +14,8 @@ void PacketParser::ParseIPv4(const u_char* ip_data, int packet_length, ParsedPac
                     std::to_wstring(ih->daddr.byte3) + L"." +
                     std::to_wstring(ih->daddr.byte4);
 
-    parsed.protocol = (ih->proto == 6) ? L"TCP" : (ih->proto == 17) ? L"UDP" : L"Other";
-    parsed.length = std::to_wstring(packet_length);
+    parsed.protocol = ih->proto == 6 ? L"TCP" : ih->proto == 17 ? L"UDP" : L"Other";
+    
 }
 
 // Formatting ipv6 addr
@@ -29,14 +29,13 @@ std::wstring PacketParser::FormatIPv6Address(const u_short* segments) {
 }
 
 // Parsing ipv6
-void PacketParser::ParseIPv6(const u_char* ip_data, int packet_length, ParsedPacket& parsed) {
+void PacketParser::ParseIPv6(const u_char* ip_data, ParsedPacket& parsed) {
     ipv6_header* ih6 = (ipv6_header*)ip_data;
 
     parsed.srcIp = FormatIPv6Address(ih6->saddr.segments);
     parsed.destIp = FormatIPv6Address(ih6->daddr.segments);
 
-    parsed.protocol = (ih6->next_header == 6) ? L"TCP" : (ih6->next_header == 17) ? L"UDP" : L"Other";
-    parsed.length = std::to_wstring(packet_length);
+    parsed.protocol = ih6->next_header == 6 ? L"TCP" : ih6->next_header == 17 ? L"UDP" : L"Other";
 }
 
 // Combining two bytes into unsigned short
@@ -73,6 +72,9 @@ ParsedPacket PacketParser::ParsePacket(int index, Packet& packet) {
     const u_char* ip_data = nullptr;
     u_short eth_type = 0;
 
+    // Length of packet
+    parsed.length = std::to_wstring(packet.GetLength());
+
     // Data link layer processing
     if (link_type == DLT_EN10MB) {  // Ethernet
         eth_type = combineTwoBytes(data[12], data[13]);
@@ -85,14 +87,40 @@ ParsedPacket PacketParser::ParsePacket(int index, Packet& packet) {
 
     // Network layer processing
     if (eth_type == 0x0800) {  // IPv4
-        ParseIPv4(ip_data, packet.GetLength(), parsed);
+        ParseIPv4(ip_data, parsed);
+
+        // Extract transport layer information
+        uint8_t protocol = ip_data[9];  // Protocol field in IPv4 header
+        const u_char* transport_data = ip_data + (ip_data[0] & 0x0F) * 4;  // Skip IPv4 header
+
+        if (protocol == 6 || protocol == 17) { 
+            parsed.srcPort = std::to_wstring(combineTwoBytes(transport_data[0], transport_data[1]));
+            parsed.destPort = std::to_wstring(combineTwoBytes(transport_data[2], transport_data[3]));
+        } else {
+            parsed.srcPort = L"N/A";
+            parsed.destPort = L"N/A";
+        }
     } else if (eth_type == 0x86DD) {  // IPv6
-        ParseIPv6(ip_data, packet.GetLength(), parsed);
+        ParseIPv6(ip_data, parsed);
+
+        // Extract transport layer information
+        uint8_t next_header = ip_data[6];  // Next header field in IPv6 header
+        const u_char* transport_data = ip_data + 40;  // IPv6 header is always 40 bytes
+
+        if (next_header == 6 || next_header == 17) { 
+            parsed.srcPort = std::to_wstring(combineTwoBytes(transport_data[0], transport_data[1]));
+            parsed.destPort = std::to_wstring(combineTwoBytes(transport_data[2], transport_data[3]));
+        } else {
+            parsed.srcPort = L"N/A";
+            parsed.destPort = L"N/A";
+        }
     } else {
         parsed.srcIp = L"N/A";
         parsed.destIp = L"N/A";
         parsed.protocol = L"N/A";
         parsed.length = std::to_wstring(packet.GetLength());
+        parsed.srcPort = L"N/A";
+        parsed.destPort = L"N/A";
     }
 
     return parsed;

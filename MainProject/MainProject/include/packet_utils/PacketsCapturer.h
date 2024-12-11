@@ -15,6 +15,6 @@ public:
     const char* GetDeviceName();
     boolean IsCapturing() const { return isCapturing; };
     
-    void StartCapturing();
+    void StartCapturing(std::string filterExp);
     void StopCapturing();
 };

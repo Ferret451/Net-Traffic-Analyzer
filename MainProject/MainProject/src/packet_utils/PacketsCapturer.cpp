@@ -13,33 +13,63 @@ const char *PacketsCapturer::GetDeviceName() {
     return deviceName;
 }
 
-void PacketsCapturer::StartCapturing() {
+void PacketsCapturer::StartCapturing(std::string filterExp) {
     pcap_t *adHandle;
     char errBuf[PCAP_ERRBUF_SIZE];
+    bpf_program filterCode;
+    bpf_u_int32 netMask = 0; 
     
-    if ((adHandle = pcap_open_live(deviceName, PACKET_SIZE, PCAP_OPENFLAG_PROMISCUOUS, 1000, errBuf ) ) == NULL) {
-
-        //TODO: add printing error
-        
+    if ((adHandle = pcap_open_live(deviceName, PACKET_SIZE, PCAP_OPENFLAG_PROMISCUOUS, 1000, errBuf)) == NULL) {
+        printf("Error opening device: %s\n", errBuf);
+        return;
+    }
+    
+    pcap_if_t *device;
+    if (pcap_findalldevs(&device, errBuf) == 0) {
+        while (device != NULL) {
+            if (strcmp(device->name, deviceName) == 0 && device->addresses != NULL) {
+                sockaddr_in* netmask_addr = (sockaddr_in*)(device->addresses->netmask);
+                if (netmask_addr) {
+                    netMask = netmask_addr->sin_addr.s_addr;
+                } else {
+                    netMask = 0xFFFFFFFF;
+                }
+                break;
+            }
+            device = device->next;
+        }
+        pcap_freealldevs(device);
+    }
+    
+    if (pcap_compile(adHandle, &filterCode, filterExp.c_str(), 1, netMask) == -1) {
+        printf("Error compiling filter: %s\n", pcap_geterr(adHandle));
+        pcap_close(adHandle);
+        return;
+    }
+    
+    if (pcap_setfilter(adHandle, &filterCode) == -1) {
+        printf("Error setting filter: %s\n", pcap_geterr(adHandle));
+        pcap_freecode(&filterCode);
+        pcap_close(adHandle);
         return;
     }
 
+    pcap_freecode(&filterCode);
+    
     int res;
     pcap_pkthdr *header;
     const u_char *pkt_data;
     isCapturing = true;
-    
-    while(isCapturing){
+
+    while (isCapturing) {
         res = pcap_next_ex(adHandle, &header, &pkt_data);
-        
+
         if (res == 0)
             continue;
 
-        if (res == -1){
-            printf("Error reading the packets: %s\n", pcap_geterr(adHandle));
-
-            //TODO: add printing error
-
+        if (res == -1) {
+            printf("Error reading packets: %s\n", pcap_geterr(adHandle));
+            pcap_close(adHandle);
             return;
         }
 
