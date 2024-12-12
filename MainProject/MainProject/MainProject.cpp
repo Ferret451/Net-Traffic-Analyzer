@@ -18,6 +18,7 @@
 #include "include/ui/UIEdit.h"
 #include "include/ui/UILabel.h"
 #include "include/ui/UIListView.h"
+#include "include/window/DetailPacketWindow.h"
 
 struct CaptureThreadParams {
     CaptureManager* captureManager;
@@ -180,6 +181,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
     
     switch (message) {
     case WM_CREATE: {
+            // Declaring window class
+            DetailPacketWindow::RegisterDetailWindowClass();
+            
             // Declaring graphic resources
             hBrush = CreateSolidBrush(RGB(255, 255, 255));
 
@@ -198,7 +202,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             cbDevices.FillWithDevices(devices, devicesCount);
 
             int scrollbarWidth = GetSystemMetrics(SM_CXVSCROLL);    
-            cbDevices.SetBoxWidth(cbDevices.CalcMaxTextWidth() + 1.5 * scrollbarWidth);
+            cbDevices.SetBoxWidth(cbDevices.CalcMaxTextWidth() + 2 * scrollbarWidth);
 
             delete [] devices;
 
@@ -284,7 +288,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             // Default filters button
             btnDefaultFilters = UIButton(L"BUTTON", L"Default",
                 WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                10, 413, 200, 30, hWnd, (HMENU) id_btn_start, NULL, NULL);
+                10, 413, 200, 30, hWnd, (HMENU) id_btn_default_filters, NULL, NULL);
                 
             // Start button
             btnStart = UIButton(L"BUTTON", L">",
@@ -319,6 +323,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             lvPackets = UIListView(WC_LISTVIEW, NULL,
                 WS_CHILD | WS_VISIBLE | LVS_REPORT,
                 230, 60, 750, 390, hWnd, (HMENU) id_lv_packets, NULL, NULL);
+            ListView_SetExtendedListViewStyle(lvPackets.GetHWindow(), LVS_EX_FULLROWSELECT);
                 
             const wchar_t* columnsHeaders[] = { L"No.", L"Time", L"Source IP", L"Destination IP",
                 L"Protocol", L"Source Port", L"Destination Port", L"Length", };
@@ -675,7 +680,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
         PacketParser parser;
         for (int i = displayedCount; i < packetsCount; i++) {
             Packet* packet = packetManager.GetPacket(i);
-            ParsedPacket parsed = parser.ParsePacket(i, *packet);
+            ParsedPacket parsed = parser.ParsePacket(i + 1, *packet);
 
             const wchar_t* columnsValues[8] = {
                 parsed.index.c_str(),
@@ -699,6 +704,21 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
         break;
     }
 
+    case WM_NOTIFY: {
+        if (reinterpret_cast<LPNMHDR>(lParam)->idFrom == id_lv_packets && 
+            reinterpret_cast<LPNMHDR>(lParam)->code == NM_DBLCLK) {
+            LPNMITEMACTIVATE pnmItem = reinterpret_cast<LPNMITEMACTIVATE>(lParam);
+        
+            PacketParser parser;
+            if (pnmItem->iItem != -1) {
+                Packet* packet = packetManager.GetPacket(pnmItem->iItem);
+                DetailPacketWindow::CreateDetailWindow(hWnd, parser.GetPacketDetails(*packet), pnmItem->iItem);
+            }
+        }
+            
+        break;
+    }
+
     case WM_CTLCOLORSTATIC: {
         HDC hdcStatic = (HDC)wParam;
         SetBkMode(hdcStatic, TRANSPARENT);
@@ -706,9 +726,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
     }
 
     case WM_DESTROY:
-        // TODO: ADD DELETING ALL OBJECTS
-            PostQuitMessage(0);
-    break;
+        PostQuitMessage(0);
+        break;
 
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
